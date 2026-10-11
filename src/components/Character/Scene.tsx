@@ -22,10 +22,23 @@ const Scene = () => {
   const [character, setChar] = useState<THREE.Object3D | null>(null);
   useEffect(() => {
     if (canvasDiv.current) {
+      let isCancelled = false;
+      let animId: number;
+
+      // Ensure canvasDiv is clean of any previous canvas elements
+      while (canvasDiv.current.firstChild) {
+        if (canvasDiv.current.firstChild !== hoverDivRef.current) {
+          canvasDiv.current.removeChild(canvasDiv.current.firstChild);
+        } else {
+          break;
+        }
+      }
+
       let rect = canvasDiv.current.getBoundingClientRect();
       let container = { width: rect.width, height: rect.height };
       const aspect = container.width / container.height;
-      const scene = sceneRef.current;
+      const scene = new THREE.Scene();
+      sceneRef.current = scene;
 
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
@@ -38,7 +51,6 @@ const Scene = () => {
       canvasDiv.current.appendChild(renderer.domElement);
 
       const camera = new THREE.PerspectiveCamera(14.5, aspect, 0.1, 1000);
-      camera.position.z = 10;
       camera.position.set(0, 13.1, 24.7);
       camera.zoom = 1.1;
       camera.updateProjectionMatrix();
@@ -53,8 +65,30 @@ const Scene = () => {
       let progress = setProgress((value) => setLoading(value));
       const { loadCharacter } = setCharacter(renderer, scene, camera);
 
-      loadCharacter().then((gltf) => {
-        if (gltf) {
+      // Failsafe timeout: if character decryption / loading stalls beyond 5 seconds, ensure loader completes
+      const safetyTimer = setTimeout(() => {
+        if (!isCancelled) {
+          console.warn("Character load timeout fallback triggered.");
+          progress.loaded();
+        }
+      }, 5000);
+
+      loadCharacter()
+        .then((gltf) => {
+          clearTimeout(safetyTimer);
+          if (isCancelled || !gltf) {
+            progress.dispose();
+            return;
+          }
+
+          // Remove any existing character groups from the scene to prevent duplicates
+          for (let i = scene.children.length - 1; i >= 0; i--) {
+            const childObj = scene.children[i];
+            if (childObj.type === "Group" && childObj.name === "Scene") {
+              scene.remove(childObj);
+            }
+          }
+
           const animations = setAnimations(gltf);
           hoverDivRef.current && animations.hover(gltf, hoverDivRef.current);
           mixer = animations.mixer;
@@ -63,17 +97,26 @@ const Scene = () => {
           scene.add(character);
           headBone = character.getObjectByName("spine006") || null;
           screenLight = character.getObjectByName("screenlight") || null;
+          (window as any).__char = character;
+          (window as any).__headBone = headBone;
+          (window as any).__camera = camera;
+          (window as any).__scene = scene;
+          (window as any).__THREE = THREE;
           progress.loaded().then(() => {
             setTimeout(() => {
               light.turnOnLights();
               animations.startIntro();
-            }, 2500);
+            }, 1000);
           });
           window.addEventListener("resize", () =>
             handleResize(renderer, camera, canvasDiv, character)
           );
-        }
-      });
+        })
+        .catch((err) => {
+          clearTimeout(safetyTimer);
+          console.error("Failed to load character model:", err);
+          progress.clear();
+        });
 
       let mouse = { x: 0, y: 0 },
         interpolation = { x: 0.1, y: 0.2 };
@@ -107,33 +150,43 @@ const Scene = () => {
         landingDiv.addEventListener("touchend", onTouchEnd);
       }
       const animate = () => {
-        requestAnimationFrame(animate);
-        if (headBone) {
-          handleHeadRotation(
-            headBone,
-            mouse.x,
-            mouse.y,
-            interpolation.x,
-            interpolation.y,
-            THREE.MathUtils.lerp
-          );
-          light.setPointLight(screenLight);
+        animId = requestAnimationFrame(animate);
+        try {
+          const delta = clock.getDelta();
+          if (mixer) {
+            mixer.update(delta);
+          }
+          if (headBone) {
+            handleHeadRotation(
+              headBone,
+              mouse.x,
+              mouse.y,
+              interpolation.x,
+              interpolation.y,
+              THREE.MathUtils.lerp
+            );
+            if (screenLight) {
+              light.setPointLight(screenLight);
+            }
+          }
+          renderer.render(scene, camera);
+        } catch (e) {
+          console.error("Render loop error:", e);
         }
-        const delta = clock.getDelta();
-        if (mixer) {
-          mixer.update(delta);
-        }
-        renderer.render(scene, camera);
       };
       animate();
       return () => {
+        isCancelled = true;
+        clearTimeout(safetyTimer);
+        progress.dispose();
+        cancelAnimationFrame(animId);
         clearTimeout(debounce);
         scene.clear();
         renderer.dispose();
         window.removeEventListener("resize", () =>
           handleResize(renderer, camera, canvasDiv, character!)
         );
-        if (canvasDiv.current) {
+        if (canvasDiv.current && renderer.domElement.parentNode === canvasDiv.current) {
           canvasDiv.current.removeChild(renderer.domElement);
         }
         if (landingDiv) {
@@ -147,10 +200,9 @@ const Scene = () => {
 
   return (
     <>
-      <div className="character-container">
-        <div className="character-model" ref={canvasDiv}>
-          <div className="character-rim"></div>
-          <div className="character-hover" ref={hoverDivRef}></div>
+      <div className="character-container" data-cursor="disable">
+        <div className="character-model" ref={canvasDiv} data-cursor="disable">
+          <div className="character-hover" ref={hoverDivRef} data-cursor="disable"></div>
         </div>
       </div>
     </>

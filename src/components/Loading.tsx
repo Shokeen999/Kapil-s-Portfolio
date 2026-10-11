@@ -10,14 +10,18 @@ const Loading = ({ percent }: { percent: number }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [clicked, setClicked] = useState(false);
 
-  if (percent >= 100) {
-    setTimeout(() => {
-      setLoaded(true);
-      setTimeout(() => {
-        setIsLoaded(true);
-      }, 1000);
-    }, 600);
-  }
+  useEffect(() => {
+    if (percent >= 100 && !loaded) {
+      const t1 = setTimeout(() => {
+        setLoaded(true);
+        const t2 = setTimeout(() => {
+          setIsLoaded(true);
+        }, 800);
+        return () => clearTimeout(t2);
+      }, 400);
+      return () => clearTimeout(t1);
+    }
+  }, [percent, loaded]);
 
   useEffect(() => {
     import("./utils/initialFX").then((module) => {
@@ -94,8 +98,10 @@ export default Loading;
 
 export const setProgress = (setLoading: (value: number) => void) => {
   let percent: number = 0;
+  let isDisposed = false;
 
-  let interval = setInterval(() => {
+  let interval: any = setInterval(() => {
+    if (isDisposed) return;
     if (percent <= 50) {
       let rand = Math.round(Math.random() * 5);
       percent = percent + rand;
@@ -103,23 +109,31 @@ export const setProgress = (setLoading: (value: number) => void) => {
     } else {
       clearInterval(interval);
       interval = setInterval(() => {
+        if (isDisposed) return;
         percent = percent + Math.round(Math.random());
         setLoading(percent);
         if (percent > 91) {
           clearInterval(interval);
         }
-      }, 2000);
+      }, 500);
     }
-  }, 100);
+  }, 80);
 
   function clear() {
+    isDisposed = true;
     clearInterval(interval);
     setLoading(100);
   }
 
+  function dispose() {
+    isDisposed = true;
+    clearInterval(interval);
+  }
+
   function loaded() {
+    isDisposed = true;
+    clearInterval(interval);
     return new Promise<number>((resolve) => {
-      clearInterval(interval);
       interval = setInterval(() => {
         if (percent < 100) {
           percent++;
@@ -128,8 +142,8 @@ export const setProgress = (setLoading: (value: number) => void) => {
           resolve(percent);
           clearInterval(interval);
         }
-      }, 2);
+      }, 5);
     });
   }
-  return { loaded, percent, clear };
+  return { loaded, percent, clear, dispose };
 };

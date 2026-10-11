@@ -87,24 +87,23 @@ const WhatIDo = () => {
             <div className="what-corner"></div>
 
             <div className="what-content-in">
-              <h3>DEVELOP</h3>
-              <h4>Description</h4>
+              <h3>BI & AUTOMATION</h3>
+              <h4>Expertise</h4>
               <p>
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Quas
-                quia aliquid laboriosam ducimus sit molestiae.
+                Architecting end-to-end business intelligence pipelines, interactive
+                Power BI dashboards, and automated reporting systems in Google Sheets
+                and Excel VBA that turn manual hours into real-time insights.
               </p>
               <h5>Skillset & tools</h5>
               <div className="what-content-flex">
-                <div className="what-tags">JavaScript</div>
-                <div className="what-tags">TypeScript</div>
-                <div className="what-tags">Three.js</div>
-                <div className="what-tags">React</div>
-                <div className="what-tags">Css</div>
-                <div className="what-tags">Node.js</div>
-                <div className="what-tags">Next.js</div>
-                <div className="what-tags">Express.js</div>
-                <div className="what-tags">PHP</div>
-                <div className="what-tags">MySql</div>
+                <div className="what-tags">Power BI</div>
+                <div className="what-tags">DAX</div>
+                <div className="what-tags">Power Query</div>
+                <div className="what-tags">Google Sheets</div>
+                <div className="what-tags">Excel Automation</div>
+                <div className="what-tags">VBA & Macros</div>
+                <div className="what-tags">Automated Email Reports</div>
+                <div className="what-tags">Data Pipelines</div>
               </div>
               <div className="what-arrow"></div>
             </div>
@@ -128,22 +127,24 @@ const WhatIDo = () => {
             </div>
             <div className="what-corner"></div>
             <div className="what-content-in">
-              <h3>DESIGN</h3>
-              <h4>Description</h4>
+              <h3>MIS & ANALYTICS</h3>
+              <h4>Expertise</h4>
               <p>
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Quas
-                quia aliquid laboriosam ducimus sit molestiae
+                Delivering CEO and executive-grade MIS dashboards, WBR reporting,
+                KPI scorecards, workforce management (WFM) shrinkage & productivity
+                tracking, and multi-territory sales reconciliation.
               </p>
               <h5>Skillset & tools</h5>
               <div className="what-content-flex">
-                <div className="what-tags">Blender</div>
-                <div className="what-tags">Zbrush</div>
-                <div className="what-tags">UI Design</div>
-                <div className="what-tags">Motion</div>
-                <div className="what-tags">Rigging</div>
-                <div className="what-tags">3D Animation</div>
-                <div className="what-tags">Character Design</div>
-                <div className="what-tags">Modelling</div>
+                <div className="what-tags">MIS Dashboards</div>
+                <div className="what-tags">WBR Reporting</div>
+                <div className="what-tags">Scorecards</div>
+                <div className="what-tags">KPI Tracking</div>
+                <div className="what-tags">Workforce Management</div>
+                <div className="what-tags">Shrinkage & Attrition</div>
+                <div className="what-tags">Sales & Inventory</div>
+                <div className="what-tags">Data Reconciliation</div>
+                <div className="what-tags">Pivot Tables</div>
               </div>
               <div className="what-arrow"></div>
             </div>

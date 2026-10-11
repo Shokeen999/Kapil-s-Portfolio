@@ -30,6 +30,32 @@
   letter-spacing: 1px;
 }
 
+.about-stats {
+  display: flex;
+  gap: 35px;
+  margin-top: 35px;
+  flex-wrap: wrap;
+}
+
+.about-stat-item h4 {
+  font-size: 36px;
+  margin: 0;
+  font-weight: 700;
+  background: linear-gradient(135deg, #c481ff 0%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+
+.about-stat-item span {
+  font-size: 13px;
+  color: #adacac;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-top: 5px;
+  font-weight: 300;
+}
+
 @media only screen and (min-width: 600px) {
   .about-section {
     justify-content: center;

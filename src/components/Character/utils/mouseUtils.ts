@@ -43,40 +43,23 @@ export const handleHeadRotation = (
   lerp: (x: number, y: number, t: number) => number
 ) => {
   if (!headBone) return;
-  if (window.scrollY < 200) {
-    const maxRotation = Math.PI / 6;
-    headBone.rotation.y = lerp(
-      headBone.rotation.y,
-      mouseX * maxRotation,
-      interpolationY
-    );
-    let minRotationX = -0.3;
-    let maxRotationX = 0.4;
-    if (mouseY > minRotationX) {
-      if (mouseY < maxRotationX) {
-        headBone.rotation.x = lerp(
-          headBone.rotation.x,
-          -mouseY - 0.5 * maxRotation,
-          interpolationX
-        );
-      } else {
-        headBone.rotation.x = lerp(
-          headBone.rotation.x,
-          -maxRotation - 0.5 * maxRotation,
-          interpolationX
-        );
-      }
-    } else {
-      headBone.rotation.x = lerp(
-        headBone.rotation.x,
-        -minRotationX - 0.5 * maxRotation,
-        interpolationX
-      );
-    }
+  const scrollThreshold = typeof window !== "undefined" ? window.innerHeight * 0.75 : 500;
+  const basePitch = (window as any).__basePitch ?? 0;
+
+  if (window.scrollY < scrollThreshold) {
+    // When mouse is at center (0, 0), head looks directly straight at user/camera
+    const pitchRange = 0.24;
+    const yawRange = Math.PI / 5;
+
+    const targetX = basePitch - mouseY * pitchRange;
+    const targetY = mouseX * yawRange;
+
+    headBone.rotation.x = lerp(headBone.rotation.x, targetX, interpolationX);
+    headBone.rotation.y = lerp(headBone.rotation.y, targetY, interpolationY);
   } else {
     if (window.innerWidth > 1024) {
-      headBone.rotation.x = lerp(headBone.rotation.x, -0.4, 0.03);
-      headBone.rotation.y = lerp(headBone.rotation.y, -0.3, 0.03);
+      headBone.rotation.x = lerp(headBone.rotation.x, basePitch, 0.03);
+      headBone.rotation.y = lerp(headBone.rotation.y, 0, 0.03);
     }
   }
 };

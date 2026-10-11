@@ -94,10 +94,13 @@ body {
 .techstack {
   width: 100%;
   position: relative;
-  height: var(--vh);
-  margin: auto;
-  margin-top: 50px;
-  margin-bottom: -100px;
+  height: 100vh;
+  min-height: 650px;
+  margin: 0 auto;
+  padding: 60px 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  clear: both;
 }
 
 .techstack h2 {

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="256" fill="#ffffff"/>
+  <circle cx="256" cy="256" r="248" fill="none" stroke="#e5e7eb" stroke-width="6"/>
+  <g transform="translate(156, 120)">
+    <circle cx="100" cy="100" r="80" fill="none" stroke="#18181b" stroke-width="14" stroke-dasharray="380, 50"/>
+    <path d="M165,35 L190,55 L155,70 Z" fill="#18181b"/>
+    <text x="100" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="900" fill="#18181b" text-anchor="middle">ETL</text>
+  </g>
+  <text x="256" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="900" fill="#18181b" text-anchor="middle" letter-spacing="3">POWER QUERY</text>
+</svg>

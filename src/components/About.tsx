@@ -6,10 +6,22 @@ const About = () => {
       <div className="about-me">
         <h3 className="title">About Me</h3>
         <p className="para">
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Hic quis
-          dolores numquam iusto Ratione earum ducimus autem id iure pariatur
-          dolorum quae maiores.
+          Senior Analyst with 5+ years of experience delivering 60+ automated dashboards and BI pipelines across fintech, FMCG, e-commerce, and BPO sectors.
         </p>
+        <div className="about-stats">
+          <div className="about-stat-item">
+            <h4>5+</h4>
+            <span>Years Experience</span>
+          </div>
+          <div className="about-stat-item">
+            <h4>60+</h4>
+            <span>Dashboards Delivered</span>
+          </div>
+          <div className="about-stat-item">
+            <h4>97%</h4>
+            <span>Reporting Time Cut</span>
+          </div>
+        </div>
       </div>
     </div>
   );

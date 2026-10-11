@@ -1,8 +1,8 @@
 import {
-  FaGithub,
-  FaInstagram,
   FaLinkedinIn,
-  FaXTwitter,
+  FaEnvelope,
+  FaPhone,
+  FaWhatsapp,
 } from "react-icons/fa6";
 import "./styles/SocialIcons.css";
 import { TbNotes } from "react-icons/tb";
@@ -60,27 +60,48 @@ const SocialIcons = () => {
     <div className="icons-section">
       <div className="social-icons" data-cursor="icons" id="social">
         <span>
-          <a href="https://github.com" target="_blank">
-            <FaGithub />
-          </a>
-        </span>
-        <span>
-          <a href="https://www.linkedin.com" target="_blank">
+          <a
+            href="https://www.linkedin.com"
+            target="_blank"
+            title="LinkedIn"
+            aria-label="LinkedIn"
+          >
             <FaLinkedinIn />
           </a>
         </span>
         <span>
-          <a href="https://x.com" target="_blank">
-            <FaXTwitter />
+          <a
+            href="mailto:Kapilchauhan924@gmail.com"
+            title="Email"
+            aria-label="Email"
+          >
+            <FaEnvelope />
           </a>
         </span>
         <span>
-          <a href="https://www.instagram.com" target="_blank">
-            <FaInstagram />
+          <a
+            href="https://wa.me/919071041333"
+            target="_blank"
+            title="WhatsApp"
+            aria-label="WhatsApp"
+          >
+            <FaWhatsapp />
+          </a>
+        </span>
+        <span>
+          <a
+            href="tel:+919071041333"
+            title="Call"
+            aria-label="Phone"
+          >
+            <FaPhone />
           </a>
         </span>
       </div>
-      <a className="resume-button" href="#">
+      <a
+        className="resume-button"
+        href="mailto:Kapilchauhan924@gmail.com?subject=Resume%20Inquiry%20-%20Kapil%20Chauhan"
+      >
         <HoverLinks text="RESUME" />
         <span>
           <TbNotes />
