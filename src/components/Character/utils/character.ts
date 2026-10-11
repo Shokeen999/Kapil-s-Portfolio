@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { DRACOLoader, GLTF, GLTFLoader, MeshoptDecoder } from "three-stdlib";
+import { DRACOLoader, GLTF, GLTFLoader } from "three-stdlib";
 import { setCharTimeline, setAllTimeline } from "../../utils/GsapScroll";
 import { decryptFile } from "./decrypt";
 
@@ -136,9 +136,11 @@ const setCharacter = (
     _scene: THREE.Scene
   ): Promise<void> => {
     return new Promise((resolve) => {
-      // Create a separate loader with meshopt support for the head model
+      // Use a new loader with DRACO support (optimized model uses draco compression)
       const headLoader = new GLTFLoader();
-      headLoader.setMeshoptDecoder(MeshoptDecoder);
+      const headDracoLoader = new DRACOLoader();
+      headDracoLoader.setDecoderPath("/draco/");
+      headLoader.setDRACOLoader(headDracoLoader);
 
       headLoader.load(
         "/models/head.glb",
@@ -153,23 +155,16 @@ const setCharacter = (
             console.warn("Head bone (spine006) not found, attaching head to character root");
           }
 
-          // The Tripo model bounding box from accessor min/max:
-          // Y: [-0.4895, 0.4895] (total height ~0.979 units, centered at origin)
-          // The character's head region is around y=12.5 to y=14.0 (about 1.5 units tall)
-          // The head in the Tripo model is roughly the top 25% (Y > 0.24)
-
           // Enable clipping on the renderer
           renderer.localClippingEnabled = true;
 
           // Clipping plane to cut off below the neck
-          // The Tripo model is centered at origin, neck is approximately at Y = 0.22
-          // We clip everything below this Y in the model's local space
+          // The model is centered at origin, neck is approximately at Y = 0.22
           const neckClipY = 0.22;
           const clipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -neckClipY);
 
           // Scale: Tripo head region (Y 0.22 to 0.49) = 0.27 units
-          // Original head region is about 1.2 units tall
-          // Scale factor to match:
+          // Original head region is about 1.3 units tall
           const tripoHeadHeight = 0.49 - neckClipY;
           const originalHeadHeight = 1.3;
           const headScale = originalHeadHeight / tripoHeadHeight;
@@ -187,7 +182,6 @@ const setCharacter = (
               // Apply clipping plane to material
               if (mesh.material) {
                 const mat = mesh.material as THREE.MeshStandardMaterial;
-                // Clone material so we don't affect the source
                 const clonedMat = mat.clone();
                 clonedMat.clippingPlanes = [clipPlane];
                 clonedMat.clipShadows = true;
@@ -201,10 +195,7 @@ const setCharacter = (
           headContainer.add(headScene);
           headContainer.scale.setScalar(headScale);
 
-          // Position offset: The head bone (spine006) is at approximately the base of the skull
-          // The Tripo neck clip is at Y=0.22 in model space
-          // After scaling, the neck position becomes neckClipY * headScale in container space
-          // We need the neck of the Tripo model to align with the head bone's position
+          // Position: align neck of Tripo model with the head bone
           headContainer.position.set(0, -neckClipY * headScale, 0);
 
           // Attach to head bone or character root
@@ -212,17 +203,17 @@ const setCharacter = (
             headBone.add(headContainer);
           } else {
             character.add(headContainer);
-            // If no bone, position manually
             headContainer.position.y = 13.0;
           }
 
           console.log("Tripo head attached to character skeleton");
+          headDracoLoader.dispose();
           resolve();
         },
         undefined,
         (error) => {
           console.error("Failed to load Tripo head model:", error);
-          // Don't reject - the character can still work without the custom head
+          headDracoLoader.dispose();
           resolve();
         }
       );
