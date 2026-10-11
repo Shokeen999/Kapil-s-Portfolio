@@ -16,7 +16,7 @@ const setCharacter = (
   // Head-related mesh names from the original model that we want to HIDE
   // (because we're replacing the head with the new Tripo model)
   const headMeshNames = new Set([
-    "plane007", "hair", "eyebrow", "ear001", "eyes001", "neck",
+    "plane007", "hair", "eyebrow", "ear001", "eyes001", "neck", "face002", "face", "eyebrowl", "eyebrowr"
   ]);
 
 
@@ -95,13 +95,21 @@ const setCharacter = (
             });
 
             // Now load the new Tripo head model and attach it to the head bone
-            await loadAndAttachHead(character, renderer, camera, scene);
+            try {
+              await loadAndAttachHead(character, renderer, camera, scene);
+            } catch (headErr) {
+              console.warn("Head attach error (falling back):", headErr);
+            }
 
             // Head bone base pitch for looking straight forward
-            (window as any).__basePitch = -0.50;
+            (window as any).__basePitch = -0.26;
 
-            // Compile shaders
-            await renderer.compileAsync(character, camera, scene);
+            // Precompile shaders safely without breaking if it fails
+            try {
+              await renderer.compileAsync(character, camera, scene);
+            } catch (compileErr) {
+              console.warn("Shader precompilation skipped:", compileErr);
+            }
 
             resolve(gltf);
             setCharTimeline(character, camera);
@@ -126,94 +134,68 @@ const setCharacter = (
   };
 
   /**
-   * Load the Tripo head GLB, clip below the neck, and attach to the head bone
-   * of the original skeleton.
+   * Load the optimized Tripo head GLB (cleanly sliced at neck)
+   * and attach directly to the head bone (spine.006).
    */
   const loadAndAttachHead = (
     character: THREE.Object3D,
-    renderer: THREE.WebGLRenderer,
+    _renderer: THREE.WebGLRenderer,
     _camera: THREE.PerspectiveCamera,
     _scene: THREE.Scene
   ): Promise<void> => {
     return new Promise((resolve) => {
-      // Use a new loader with DRACO support (optimized model uses draco compression)
+      // Sliced head model is standard GLB with WebP textures (no draco or meshopt decoder required)
       const headLoader = new GLTFLoader();
-      const headDracoLoader = new DRACOLoader();
-      headDracoLoader.setDecoderPath("/draco/");
-      headLoader.setDRACOLoader(headDracoLoader);
 
       headLoader.load(
         "/models/head.glb",
         (headGltf) => {
-          const headScene = headGltf.scene;
+          try {
+            const headScene = headGltf.scene;
 
-          // Find the head bone in the original skeleton
-          const headBone = character.getObjectByName("spine006") ||
-                           character.getObjectByName("spine.006");
+            // Find head bone (spine.006)
+            const headBone =
+              character.getObjectByName("spine006") ||
+              character.getObjectByName("spine.006");
 
-          if (!headBone) {
-            console.warn("Head bone (spine006) not found, attaching head to character root");
-          }
+            // Original head height was ~2.1 units; sliced Tripo head is ~0.50 units
+            const headScale = 4.1;
 
-          // Enable clipping on the renderer
-          renderer.localClippingEnabled = true;
+            const headContainer = new THREE.Group();
+            headContainer.name = "tripoHeadContainer";
 
-          // Clipping plane to cut off below the neck
-          // The model is centered at origin, neck is approximately at Y = 0.22
-          const neckClipY = 0.22;
-          const clipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -neckClipY);
-
-          // Scale: Tripo head region (Y 0.22 to 0.49) = 0.27 units
-          // Original head region is about 1.3 units tall
-          const tripoHeadHeight = 0.49 - neckClipY;
-          const originalHeadHeight = 1.3;
-          const headScale = originalHeadHeight / tripoHeadHeight;
-
-          // Create a container group for the head
-          const headContainer = new THREE.Group();
-          headContainer.name = "tripoHeadContainer";
-
-          headScene.traverse((child: any) => {
-            if (child.isMesh) {
-              const mesh = child as THREE.Mesh;
-              mesh.castShadow = true;
-              mesh.receiveShadow = true;
-
-              // Apply clipping plane to material
-              if (mesh.material) {
-                const mat = mesh.material as THREE.MeshStandardMaterial;
-                const clonedMat = mat.clone();
-                clonedMat.clippingPlanes = [clipPlane];
-                clonedMat.clipShadows = true;
-                clonedMat.side = THREE.DoubleSide;
-                mesh.material = clonedMat;
+            headScene.traverse((child: any) => {
+              if (child.isMesh) {
+                const mesh = child as THREE.Mesh;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.frustumCulled = false;
               }
+            });
+
+            headContainer.add(headScene);
+            headContainer.scale.setScalar(headScale);
+
+            // Neck base is at Y = 0 in the sliced model.
+            // Offset slightly downward (-0.15) so the neck collar plugs neatly into the shirt collar.
+            headContainer.position.set(0, -0.15, 0);
+
+            if (headBone) {
+              headBone.add(headContainer);
+              console.log("Tripo head attached successfully to spine.006 bone");
+            } else {
+              character.add(headContainer);
+              headContainer.position.set(0, 12.0, 0);
+              console.warn("Head bone spine.006 not found; attached head to character root");
             }
-          });
-
-          // Scale the head to match original character proportions
-          headContainer.add(headScene);
-          headContainer.scale.setScalar(headScale);
-
-          // Position: align neck of Tripo model with the head bone
-          headContainer.position.set(0, -neckClipY * headScale, 0);
-
-          // Attach to head bone or character root
-          if (headBone) {
-            headBone.add(headContainer);
-          } else {
-            character.add(headContainer);
-            headContainer.position.y = 13.0;
+          } catch (err) {
+            console.error("Error positioning head:", err);
           }
-
-          console.log("Tripo head attached to character skeleton");
-          headDracoLoader.dispose();
           resolve();
         },
         undefined,
         (error) => {
-          console.error("Failed to load Tripo head model:", error);
-          headDracoLoader.dispose();
+          console.error("Failed to load head model:", error);
           resolve();
         }
       );

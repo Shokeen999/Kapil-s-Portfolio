@@ -65,13 +65,13 @@ const Scene = () => {
       let progress = setProgress((value) => setLoading(value));
       const { loadCharacter } = setCharacter(renderer, scene, camera);
 
-      // Failsafe timeout: if character decryption / loading stalls beyond 5 seconds, ensure loader completes
+      // Failsafe timeout: if character decryption / loading stalls beyond 15 seconds, ensure loader completes
       const safetyTimer = setTimeout(() => {
         if (!isCancelled) {
           console.warn("Character load timeout fallback triggered.");
           progress.loaded();
         }
-      }, 5000);
+      }, 15000);
 
       loadCharacter()
         .then((gltf) => {
