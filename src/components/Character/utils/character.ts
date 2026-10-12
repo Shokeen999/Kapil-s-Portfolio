@@ -1,4 +1,4 @@
-import * as THREE from "three";
+﻿import * as THREE from "three";
 import { DRACOLoader, GLTF, GLTFLoader } from "three-stdlib";
 import { setCharTimeline, setAllTimeline } from "../../utils/GsapScroll";
 import { decryptFile } from "./decrypt";
@@ -13,12 +13,12 @@ const setCharacter = (
   dracoLoader.setDecoderPath("/draco/");
   loader.setDRACOLoader(dracoLoader);
 
-  // Head-related mesh names from the original model that we want to HIDE
-  // (because we're replacing the head with the new Tripo model)
+  // Meshes to HIDE from the original model (replaced by Tripo head)
+  // Plane.007 is ALSO hidden here - blink is driven by rAF directly on its morphTargetInfluences
   const headMeshNames = new Set([
-    "plane007", "hair", "eyebrow", "ear001", "eyes001", "neck", "face002", "face", "eyebrowl", "eyebrowr"
+    "plane007", "hair", "eyebrow", "ear001", "eyes001",
+    "face002", "face", "eyebrowl", "eyebrowr"
   ]);
-
 
   const loadCharacter = () => {
     return new Promise<GLTF | null>(async (resolve, reject) => {
@@ -35,7 +35,6 @@ const setCharacter = (
           async (gltf) => {
             character = gltf.scene;
 
-            // Body material palette (keeping the original body colors)
             const skinColor = new THREE.Color("#cb8e62");
             const suitColor = new THREE.Color("#100f14");
             const pantColor = new THREE.Color("#141418");
@@ -65,7 +64,9 @@ const setCharacter = (
               metalness: 0.15,
             });
 
-            // Traverse the original model: hide head parts, style body parts
+            // Collect morph-target meshes before hiding them
+            const morphMeshes: THREE.Mesh[] = [];
+
             character.traverse((child: any) => {
               if (child.isMesh) {
                 const mesh = child as THREE.Mesh;
@@ -75,9 +76,13 @@ const setCharacter = (
 
                 const nodeName = (child.name || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
-                // HIDE all head-related meshes
+                // Hide all original head meshes (including Plane.007)
                 if (headMeshNames.has(nodeName)) {
                   child.visible = false;
+                  // But save Plane.007 for blink morph-target access
+                  if (nodeName === "plane007" && mesh.morphTargetInfluences && mesh.morphTargetInfluences.length > 0) {
+                    morphMeshes.push(mesh);
+                  }
                   return;
                 }
 
@@ -90,11 +95,18 @@ const setCharacter = (
                   child.material = pantMaterial;
                 } else if (nodeName === "shoe" || nodeName === "sole") {
                   child.material = shoeMaterial;
+                } else if (nodeName === "neck") {
+                  // Keep neck visible with matching skin color for smooth collar transition
+                  child.material = skinMaterial;
                 }
               }
             });
 
-            // Now load the new Tripo head model and attach it to the head bone
+            // Expose morph meshes for blink rAF loop in animationUtils
+            (window as any).__morphMeshes = morphMeshes;
+            console.log("Morph meshes found:", morphMeshes.map(m => ({ name: m.name, morphKeys: m.morphTargetDictionary ? Object.keys(m.morphTargetDictionary) : [] })));
+
+            // Load and attach the Tripo head
             try {
               await loadAndAttachHead(character, renderer, camera, scene);
             } catch (headErr) {
@@ -104,7 +116,6 @@ const setCharacter = (
             // Head bone base pitch for looking straight forward
             (window as any).__basePitch = -0.26;
 
-            // Precompile shaders safely without breaking if it fails
             try {
               await renderer.compileAsync(character, camera, scene);
             } catch (compileErr) {
@@ -134,8 +145,7 @@ const setCharacter = (
   };
 
   /**
-   * Load the optimized Tripo head GLB (cleanly sliced at neck)
-   * and attach directly to the head bone (spine.006).
+   * Load the optimized Tripo head GLB and attach to spine.006.
    */
   const loadAndAttachHead = (
     character: THREE.Object3D,
@@ -144,7 +154,6 @@ const setCharacter = (
     _scene: THREE.Scene
   ): Promise<void> => {
     return new Promise((resolve) => {
-      // Sliced head model is standard GLB with WebP textures (no draco or meshopt decoder required)
       const headLoader = new GLTFLoader();
 
       headLoader.load(
@@ -153,13 +162,12 @@ const setCharacter = (
           try {
             const headScene = headGltf.scene;
 
-            // Find head bone (spine.006)
             const headBone =
               character.getObjectByName("spine006") ||
               character.getObjectByName("spine.006");
 
-            // Original head height was ~2.1 units; sliced Tripo head is ~0.50 units
-            const headScale = 4.1;
+            // Scale: Tripo head (~0.5 units) needs to match body (~2.1 units head)
+            const headScale = 4.8;
 
             const headContainer = new THREE.Group();
             headContainer.name = "tripoHeadContainer";
@@ -176,21 +184,19 @@ const setCharacter = (
             headContainer.add(headScene);
             headContainer.scale.setScalar(headScale);
 
-            // Rotate head by -90 deg (-Math.PI / 2) so it faces center (directly at user/camera) instead of looking right
+            // Rotate to face forward (-90deg Y)
             headScene.rotation.y = -Math.PI / 2;
 
-            // The extended neck in head.glb goes down to Y = -0.16.
-            // Position downward (-0.25) so the neck collar plugs deep inside the shirt collar,
-            // ensuring the bottom cut line is completely hidden inside the body.
-            headContainer.position.set(0, -0.25, 0);
+            // Y = -0.18 so neck of Tripo head tucks into shirt collar just enough
+            headContainer.position.set(0, -0.18, 0);
 
             if (headBone) {
               headBone.add(headContainer);
-              console.log("Tripo head attached successfully to spine.006 bone");
+              console.log("Tripo head attached to spine.006");
             } else {
               character.add(headContainer);
               headContainer.position.set(0, 12.0, 0);
-              console.warn("Head bone spine.006 not found; attached head to character root");
+              console.warn("spine.006 not found; attached to root");
             }
           } catch (err) {
             console.error("Error positioning head:", err);
