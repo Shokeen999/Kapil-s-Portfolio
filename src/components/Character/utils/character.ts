@@ -176,9 +176,13 @@ const setCharacter = (
             headContainer.add(headScene);
             headContainer.scale.setScalar(headScale);
 
-            // Neck base is at Y = 0 in the sliced model.
-            // Offset slightly downward (-0.15) so the neck collar plugs neatly into the shirt collar.
-            headContainer.position.set(0, -0.15, 0);
+            // Rotate head by -90 deg (-Math.PI / 2) so it faces center (directly at user/camera) instead of looking right
+            headScene.rotation.y = -Math.PI / 2;
+
+            // The extended neck in head.glb goes down to Y = -0.16.
+            // Position downward (-0.25) so the neck collar plugs deep inside the shirt collar,
+            // ensuring the bottom cut line is completely hidden inside the body.
+            headContainer.position.set(0, -0.25, 0);
 
             if (headBone) {
               headBone.add(headContainer);

@@ -95,7 +95,10 @@ const Scene = () => {
           let character = gltf.scene;
           setChar(character);
           scene.add(character);
-          headBone = character.getObjectByName("spine006") || null;
+          headBone =
+            character.getObjectByName("spine006") ||
+            character.getObjectByName("spine.006") ||
+            null;
           screenLight = character.getObjectByName("screenlight") || null;
           (window as any).__char = character;
           (window as any).__headBone = headBone;
