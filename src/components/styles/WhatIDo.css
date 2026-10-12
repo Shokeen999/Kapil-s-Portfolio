@@ -239,6 +239,28 @@
   border: 1px solid #ffffff50;
   border-radius: 30px;
 }
+@media only screen and (min-width: 1025px) {
+  .whatIDO {
+    flex-direction: row;
+  }
+  .what-box-in {
+    display: flex;
+    height: 420px;
+    margin-left: 20px;
+  }
+  .what-content {
+    width: 320px;
+    padding: 25px;
+  }
+  .what-box h2 {
+    font-size: calc(3vw + 18px);
+    line-height: calc(3vw + 14px);
+    margin-right: 5%;
+  }
+  .what-box {
+    width: 50%;
+  }
+}
 @media only screen and (max-width: 1600px) {
   .what-box h2 {
     margin-right: 18%;

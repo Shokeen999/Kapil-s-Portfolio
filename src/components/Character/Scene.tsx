@@ -52,7 +52,12 @@ const Scene = () => {
 
       const camera = new THREE.PerspectiveCamera(14.5, aspect, 0.1, 1000);
       camera.position.set(0, 13.1, 24.7);
-      camera.zoom = 1.1;
+      // Adjust zoom based on screen aspect ratio:
+      // - ultrawide (>2.0): full zoom 1.1
+      // - standard 16:9 (~1.78): reduce zoom so character isn't oversized
+      // - narrower (<1.5): further reduce
+      const baseZoom = aspect >= 2.0 ? 1.1 : aspect >= 1.6 ? 0.82 : aspect >= 1.4 ? 0.75 : 0.68;
+      camera.zoom = baseZoom;
       camera.updateProjectionMatrix();
 
       let headBone: THREE.Object3D | null = null;

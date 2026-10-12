@@ -274,7 +274,7 @@
   .landing-intro {
     top: 50%;
     left: auto;
-    right: 66%;
+    right: 60%;
     transform: translate(0%, -50%);
   }
 
@@ -285,14 +285,14 @@
     text-align: left;
     transform: translate(0%, -50%);
     right: auto;
-    left: 63%;
+    left: 58%;
   }
 }
 @media screen and (min-width: 1200px) {
   .landing-intro {
     top: 50%;
     left: auto;
-    right: 68%;
+    right: 62%;
     transform: translate(0%, -50%);
   }
 
@@ -303,10 +303,24 @@
     text-align: left;
     transform: translate(0%, -50%);
     right: auto;
-    left: 65%;
+    left: 61%;
+  }
+}
+@media screen and (min-width: 1440px) {
+  .landing-intro {
+    right: 64%;
+  }
+  .landing-info {
+    left: 63%;
   }
 }
 @media screen and (min-width: 1600px) {
+  .landing-intro {
+    right: 66%;
+  }
+  .landing-info {
+    left: 65%;
+  }
   .landing-intro h2 {
     font-size: 35px;
   }
