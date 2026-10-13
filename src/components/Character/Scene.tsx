@@ -110,11 +110,12 @@ const Scene = () => {
           (window as any).__camera = camera;
           (window as any).__scene = scene;
           (window as any).__THREE = THREE;
+          // Turn on lights immediately so there's no black screen after loading
+          light.turnOnLights();
           progress.loaded().then(() => {
             setTimeout(() => {
-              light.turnOnLights();
               animations.startIntro();
-            }, 1000);
+            }, 300);
           });
           window.addEventListener("resize", () =>
             handleResize(renderer, camera, canvasDiv, character)

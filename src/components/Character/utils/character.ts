@@ -1,4 +1,4 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 import { DRACOLoader, GLTF, GLTFLoader } from "three-stdlib";
 import { setCharTimeline, setAllTimeline } from "../../utils/GsapScroll";
 import { decryptFile } from "./decrypt";
@@ -14,9 +14,9 @@ const setCharacter = (
   loader.setDRACOLoader(dracoLoader);
 
   // Meshes to HIDE from the original model (replaced by Tripo head)
-  // Plane.007 is ALSO hidden here - blink is driven by rAF directly on its morphTargetInfluences
+  // NOTE: plane007 is handled separately - kept visible for blink morph targets
   const headMeshNames = new Set([
-    "plane007", "hair", "eyebrow", "ear001", "eyes001",
+    "hair", "eyebrow", "ear001", "eyes001",
     "face002", "face", "eyebrowl", "eyebrowr"
   ]);
 
@@ -76,13 +76,20 @@ const setCharacter = (
 
                 const nodeName = (child.name || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
-                // Hide all original head meshes (including Plane.007)
-                if (headMeshNames.has(nodeName)) {
-                  child.visible = false;
-                  // But save Plane.007 for blink morph-target access
-                  if (nodeName === "plane007" && mesh.morphTargetInfluences && mesh.morphTargetInfluences.length > 0) {
+                // Plane.007 = eye blink morph mesh — keep visible with original material
+                // The rAF blink loop drives its morphTargetInfluences for blinking
+                // It appears as a flat transparent overlay on the face (not a sphere)
+                if (nodeName === "plane007") {
+                  // Keep original material — just collect it for blink access
+                  if (mesh.morphTargetInfluences && mesh.morphTargetInfluences.length > 0) {
                     morphMeshes.push(mesh);
                   }
+                  return; // don't hide it, keep visible with original material
+                }
+
+                // HIDE all other original head meshes
+                if (headMeshNames.has(nodeName)) {
+                  child.visible = false;
                   return;
                 }
 
@@ -111,15 +118,6 @@ const setCharacter = (
               await loadAndAttachHead(character, renderer, camera, scene);
             } catch (headErr) {
               console.warn("Head attach error (falling back):", headErr);
-            }
-
-            // Head bone base pitch for looking straight forward
-            (window as any).__basePitch = -0.26;
-
-            try {
-              await renderer.compileAsync(character, camera, scene);
-            } catch (compileErr) {
-              console.warn("Shader precompilation skipped:", compileErr);
             }
 
             resolve(gltf);
@@ -166,8 +164,8 @@ const setCharacter = (
               character.getObjectByName("spine006") ||
               character.getObjectByName("spine.006");
 
-            // Scale: Tripo head (~0.5 units) needs to match body (~2.1 units head)
-            const headScale = 4.8;
+            // Scale: 4.2 matches the body proportions well on standard screens
+            const headScale = 4.2;
 
             const headContainer = new THREE.Group();
             headContainer.name = "tripoHeadContainer";
@@ -187,8 +185,8 @@ const setCharacter = (
             // Rotate to face forward (-90deg Y)
             headScene.rotation.y = -Math.PI / 2;
 
-            // Y = -0.18 so neck of Tripo head tucks into shirt collar just enough
-            headContainer.position.set(0, -0.18, 0);
+            // Push neck deep into the shirt collar so the seam is hidden
+            headContainer.position.set(0, -0.28, 0);
 
             if (headBone) {
               headBone.add(headContainer);
