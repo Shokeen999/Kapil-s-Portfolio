@@ -103,15 +103,14 @@ const setCharacter = (
                 } else if (nodeName === "shoe" || nodeName === "sole") {
                   child.material = shoeMaterial;
                 } else if (nodeName === "neck") {
-                  // Keep neck visible with matching skin color for smooth collar transition
-                  child.material = skinMaterial;
+                  // Hide original neck so only Tripo neck enters shirt collar cleanly
+                  child.visible = false;
                 }
               }
             });
 
             // Expose morph meshes for blink rAF loop in animationUtils
             (window as any).__morphMeshes = morphMeshes;
-            console.log("Morph meshes found:", morphMeshes.map(m => ({ name: m.name, morphKeys: m.morphTargetDictionary ? Object.keys(m.morphTargetDictionary) : [] })));
 
             // Load and attach the Tripo head
             try {
@@ -164,7 +163,8 @@ const setCharacter = (
               character.getObjectByName("spine006") ||
               character.getObjectByName("spine.006");
 
-            const headScale = 4.6;
+            // Scale 4.1 makes the neck width (1.5) match the shirt collar opening (1.6) perfectly
+            const headScale = 4.1;
 
             const headContainer = new THREE.Group();
             headContainer.name = "tripoHeadContainer";
@@ -175,6 +175,31 @@ const setCharacter = (
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
                 mesh.frustumCulled = false;
+
+                // TRIM SHOULDERS & TORSO:
+                // Tripo model includes wide shoulders (Z: ±0.47) and torso below Y = -0.085.
+                // Discard triangles below Y = -0.085 so all protruding shoulder flaps are eliminated,
+                // leaving a clean cylindrical neck that slides seamlessly into the shirt collar.
+                const geom = mesh.geometry as THREE.BufferGeometry;
+                const posAttr = geom.attributes.position;
+                const oldIndex = geom.index;
+                if (oldIndex && posAttr) {
+                  const newIndices: number[] = [];
+                  const cutY = -0.085;
+                  for (let i = 0; i < oldIndex.count; i += 3) {
+                    const a = oldIndex.getX(i);
+                    const b = oldIndex.getX(i + 1);
+                    const c = oldIndex.getX(i + 2);
+                    const ya = posAttr.getY(a);
+                    const yb = posAttr.getY(b);
+                    const yc = posAttr.getY(c);
+                    if (ya >= cutY || yb >= cutY || yc >= cutY) {
+                      newIndices.push(a, b, c);
+                    }
+                  }
+                  geom.setIndex(newIndices);
+                  geom.computeVertexNormals();
+                }
               }
             });
 
@@ -184,43 +209,90 @@ const setCharacter = (
             // Face forward (rotate -90deg Y)
             headScene.rotation.y = -Math.PI / 2;
 
-            // Sink neck into shirt collar; no Z offset (causes floating gap)
-            headContainer.position.set(0, -0.05, 0);
+            // Tilt head UP by ~20deg (-0.35 rad) to counteract the spine's ~28deg forward slouch
+            // This centers the head so the character looks directly forward at the camera/user
+            headContainer.rotation.x = -0.35;
 
-            // Neck fill cylinder — added directly to headBone (bone-space, no 4.6x scale)
-            // bridges the seam between Tripo neck stub and shirt collar
-            const neckMat = new THREE.MeshStandardMaterial({
-              color: new THREE.Color("#cb8e62"),
-              roughness: 0.58,
-              metalness: 0.02,
+            // Seat neck deep into shirt collar opening (Y=-0.12, Z=-0.04)
+            headContainer.position.set(0, -0.12, -0.04);
+
+            // Working synthetic eyelid planes attached directly to headScene
+            const eyelidMat = new THREE.MeshBasicMaterial({
+              color: new THREE.Color("#c48a5e"),
+              side: THREE.DoubleSide,
+              depthTest: true,
+              depthWrite: false,
             });
-            const neckGeo = new THREE.CylinderGeometry(0.32, 0.38, 0.8, 20);
-            const neckFill = new THREE.Mesh(neckGeo, neckMat);
-            neckFill.name = "neckFillCylinder";
-            neckFill.position.set(0, 0.3, 0);
-            neckFill.castShadow = true;
-            neckFill.receiveShadow = true;
+            const eyeGeo = new THREE.PlaneGeometry(0.09, 0.08);
+            // Pivot at top edge of eyelid so scale.y closes downward over the eye
+            eyeGeo.translate(0, -0.04, 0);
+
+            const leftEyelid = new THREE.Mesh(eyeGeo, eyelidMat);
+            leftEyelid.name = "syntheticEyelidL";
+            leftEyelid.position.set(0.208, 0.205, 0.082);
+            leftEyelid.rotation.y = Math.PI / 2;
+            leftEyelid.scale.set(1, 0, 1);
+            leftEyelid.renderOrder = 10;
+            headScene.add(leftEyelid);
+
+            const rightEyelid = new THREE.Mesh(eyeGeo.clone(), eyelidMat);
+            rightEyelid.name = "syntheticEyelidR";
+            rightEyelid.position.set(0.208, 0.205, -0.082);
+            rightEyelid.rotation.y = Math.PI / 2;
+            rightEyelid.scale.set(1, 0, 1);
+            rightEyelid.renderOrder = 10;
+            headScene.add(rightEyelid);
+
+            // Animated blink loop
+            let blinkPhase: "idle" | "closing" | "opening" = "idle";
+            let blinkPhaseStart = performance.now();
+            let blinkIdleDuration = 2500 + Math.random() * 2500;
+            const BLINK_CLOSE_MS = 75;
+            const BLINK_OPEN_MS = 95;
+
+            const runBlink = () => {
+              const now = performance.now();
+              const el = now - blinkPhaseStart;
+              if (blinkPhase === "idle") {
+                leftEyelid.scale.y = 0;
+                rightEyelid.scale.y = 0;
+                if (el >= blinkIdleDuration) {
+                  blinkPhase = "closing";
+                  blinkPhaseStart = now;
+                }
+              } else if (blinkPhase === "closing") {
+                const t = Math.min(el / BLINK_CLOSE_MS, 1);
+                leftEyelid.scale.y = t;
+                rightEyelid.scale.y = t;
+                if (t >= 1) {
+                  blinkPhase = "opening";
+                  blinkPhaseStart = now;
+                }
+              } else {
+                const t = Math.min(el / BLINK_OPEN_MS, 1);
+                leftEyelid.scale.y = 1 - t;
+                rightEyelid.scale.y = 1 - t;
+                if (t >= 1) {
+                  blinkPhase = "idle";
+                  blinkPhaseStart = now;
+                  blinkIdleDuration = 2500 + Math.random() * 2500;
+                }
+              }
+              requestAnimationFrame(runBlink);
+            };
+            runBlink();
 
             if (headBone) {
               headBone.add(headContainer);
-              headBone.add(neckFill);
-              console.log("Tripo head + neck fill attached to spine.006");
+              console.log("Tripo head attached cleanly to spine.006");
             } else {
               character.add(headContainer);
               headContainer.position.set(0, 12.0, 0);
               console.warn("spine.006 not found; attached to root");
             }
 
-            // Restore basePitch so mouse tracking targets forward-facing pose
-            (window as any).__basePitch = -0.26;
-
-            // After introAnimation finishes (~4.5s), reset head bone pitch to look forward
-            // introAnimation clampWhenFinished=true can lock the head in a downward pose
-            setTimeout(() => {
-              if (headBone) {
-                headBone.rotation.x = -0.26;
-              }
-            }, 4500);
+            // Base pitch set to 0 since headContainer.rotation.x = -0.35 already levels the gaze
+            (window as any).__basePitch = 0.0;
 
           } catch (err) {
             console.error("Error positioning head:", err);
