@@ -76,15 +76,15 @@ const setCharacter = (
 
                 const nodeName = (child.name || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
-                // Plane.007 = eye blink morph mesh — keep visible with original material
-                // The rAF blink loop drives its morphTargetInfluences for blinking
-                // It appears as a flat transparent overlay on the face (not a sphere)
+                // Plane.007 = eye blink morph mesh
+                // Keep invisible (visible=false) to avoid the face mask overlay,
+                // but collect it so the rAF blink loop can still set morphTargetInfluences
                 if (nodeName === "plane007") {
-                  // Keep original material — just collect it for blink access
+                  child.visible = false; // hide the mask
                   if (mesh.morphTargetInfluences && mesh.morphTargetInfluences.length > 0) {
                     morphMeshes.push(mesh);
                   }
-                  return; // don't hide it, keep visible with original material
+                  return;
                 }
 
                 // HIDE all other original head meshes
@@ -185,8 +185,8 @@ const setCharacter = (
             // Rotate to face forward (-90deg Y)
             headScene.rotation.y = -Math.PI / 2;
 
-            // Push neck deep into the shirt collar so the seam is hidden
-            headContainer.position.set(0, -0.28, 0);
+            // Y = -0.10 raises the neck so it peeks above the shirt collar
+            headContainer.position.set(0, -0.10, 0);
 
             if (headBone) {
               headBone.add(headContainer);
