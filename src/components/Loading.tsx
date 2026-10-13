@@ -100,24 +100,28 @@ export const setProgress = (setLoading: (value: number) => void) => {
   let percent: number = 0;
   let isDisposed = false;
 
+  // Immediately set to 1% so the bar is never stuck at blank 0
+  percent = 1;
+  setLoading(1);
+
   let interval: any = setInterval(() => {
     if (isDisposed) return;
     if (percent <= 50) {
-      let rand = Math.round(Math.random() * 5);
-      percent = percent + rand;
+      const rand = Math.max(1, Math.round(Math.random() * 6));
+      percent = Math.min(50, percent + rand);
       setLoading(percent);
     } else {
       clearInterval(interval);
       interval = setInterval(() => {
         if (isDisposed) return;
-        percent = percent + Math.round(Math.random());
+        percent = percent + Math.round(Math.random() * 1.5);
         setLoading(percent);
         if (percent > 91) {
           clearInterval(interval);
         }
-      }, 500);
+      }, 400);
     }
-  }, 80);
+  }, 60);
 
   function clear() {
     isDisposed = true;
