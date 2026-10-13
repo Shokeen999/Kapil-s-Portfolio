@@ -1,4 +1,4 @@
-﻿import * as THREE from "three";
+import * as THREE from "three";
 import { GLTF } from "three-stdlib";
 import { eyebrowBoneNames, typingBoneNames } from "../../../data/boneData";
 
@@ -117,77 +117,83 @@ const setAnimations = (gltf: GLTF) => {
  * Uses requestAnimationFrame - works even when mesh.visible = false.
  * Also checks window.__morphMeshes set by character.ts for pre-collected meshes.
  */
+/**
+ * Creates visible eyelid planes on the Tripo head and animates them to blink.
+ * Since Plane.007 morph targets are on an invisible mesh, this approach
+ * adds actual geometry to the scene that renders the blink effect.
+ */
 function setupProgrammaticBlink(character: THREE.Object3D) {
-  // Find Plane.007 - first try character.ts pre-collected list
-  const preMorphMeshes: THREE.Mesh[] = (window as any).__morphMeshes || [];
-  let eyeMesh: THREE.Mesh | null = preMorphMeshes[0] || null;
+  // Find the Tripo head container
+  const headContainer = character.getObjectByName("tripoHeadContainer");
 
-  // Fallback: search the scene
-  if (!eyeMesh) {
-    character.traverse((child) => {
-      const lname = child.name.toLowerCase().replace(/\./g, "");
-      if (!eyeMesh && child instanceof THREE.Mesh && lname.includes("plane007")) {
-        eyeMesh = child as THREE.Mesh;
-      }
-    });
-  }
-
-  if (!eyeMesh) {
-    console.warn("Blink: Plane.007 not found - no blinking");
+  if (!headContainer) {
+    console.warn("Blink: tripoHeadContainer not found");
+    // Fallback: try morph-target approach on Plane.007
+    setupMorphBlink(character);
     return;
   }
 
-  const mesh = eyeMesh;
-  if (!mesh.morphTargetInfluences || mesh.morphTargetInfluences.length === 0) {
-    console.warn("Blink: no morph targets on Plane.007");
-    return;
-  }
+  // Skin-tone eyelid material matching the Tripo head
+  const eyelidMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#c48a5e"),
+    transparent: false,
+    depthWrite: true,
+  });
 
-  const dict = mesh.morphTargetDictionary || {};
-  console.log("Blink morph targets:", dict);
+  // Create two eyelid planes (left + right eye)
+  // Dimensions in Tripo-head local space (headScale=4.6 applied outside)
+  // These values are tuned to overlay the eye area of the Tripo head model
+  const eyeGeo = new THREE.PlaneGeometry(0.048, 0.028);
 
-  // Find the best eyelid morph index
-  const blinkIdx =
-    dict["Key 2"] !== undefined ? dict["Key 2"] :
-    dict["eyeL_60"] !== undefined ? dict["eyeL_60"] :
-    dict["eyeL_100"] !== undefined ? dict["eyeL_100"] :
-    0;
+  const leftEyelid = new THREE.Mesh(eyeGeo, eyelidMat);
+  leftEyelid.name = "syntheticEyelidL";
+  leftEyelid.position.set(0.038, 0.055, 0.155); // left eye position in head-local space
+  leftEyelid.scale.set(1, 0, 1); // start fully open (scaleY=0 = invisible)
+  leftEyelid.renderOrder = 10;
 
-  console.log("Blink: using morph index", blinkIdx, "on mesh", mesh.name);
+  const rightEyelid = new THREE.Mesh(eyeGeo.clone(), eyelidMat);
+  rightEyelid.name = "syntheticEyelidR";
+  rightEyelid.position.set(-0.038, 0.055, 0.155); // right eye position
+  rightEyelid.scale.set(1, 0, 1);
+  rightEyelid.renderOrder = 10;
 
-  // State machine: idle -> closing -> opening -> idle
+  // Add eyelids to the Tripo head scene (inside headContainer)
+  headContainer.add(leftEyelid);
+  headContainer.add(rightEyelid);
+  console.log("Blink: synthetic eyelid planes added to tripoHeadContainer");
+
+  // State machine blink loop
   type BlinkPhase = "idle" | "closing" | "opening";
   let phase: BlinkPhase = "idle";
   let phaseStart = performance.now();
-  let idleDuration = 3500 + Math.random() * 1500;
-  const CLOSE_MS = 80;
-  const OPEN_MS = 80;
+  let idleDuration = 3000 + Math.random() * 2000;
+  const CLOSE_MS = 70;
+  const OPEN_MS = 90;
 
   function tick() {
     const now = performance.now();
     const elapsed = now - phaseStart;
-
     switch (phase) {
       case "idle":
-        mesh.morphTargetInfluences![blinkIdx] = 0;
-        if (elapsed >= idleDuration) {
-          phase = "closing";
-          phaseStart = now;
-        }
+        leftEyelid.scale.y = 0;
+        rightEyelid.scale.y = 0;
+        if (elapsed >= idleDuration) { phase = "closing"; phaseStart = now; }
         break;
       case "closing": {
         const t = Math.min(elapsed / CLOSE_MS, 1);
-        mesh.morphTargetInfluences![blinkIdx] = t;
+        leftEyelid.scale.y = t;
+        rightEyelid.scale.y = t;
         if (t >= 1) { phase = "opening"; phaseStart = now; }
         break;
       }
       case "opening": {
         const t = Math.min(elapsed / OPEN_MS, 1);
-        mesh.morphTargetInfluences![blinkIdx] = 1 - t;
+        leftEyelid.scale.y = 1 - t;
+        rightEyelid.scale.y = 1 - t;
         if (t >= 1) {
           phase = "idle";
           phaseStart = now;
-          idleDuration = 2500 + Math.random() * 2000;
+          idleDuration = 2500 + Math.random() * 2500;
         }
         break;
       }
@@ -196,7 +202,49 @@ function setupProgrammaticBlink(character: THREE.Object3D) {
   }
 
   tick();
-  console.log("Blink rAF loop started");
+  console.log("Blink: eyelid animation loop started");
+}
+
+/**
+ * Fallback: morph-target blink on Plane.007 (only works when that mesh is visible).
+ */
+function setupMorphBlink(character: THREE.Object3D) {
+  const preMorphMeshes: THREE.Mesh[] = (window as any).__morphMeshes || [];
+  let eyeMesh: THREE.Mesh | null = preMorphMeshes[0] || null;
+  if (!eyeMesh) {
+    character.traverse((child) => {
+      const lname = child.name.toLowerCase().replace(/\./g, "");
+      if (!eyeMesh && child instanceof THREE.Mesh && lname.includes("plane007")) {
+        eyeMesh = child as THREE.Mesh;
+      }
+    });
+  }
+  if (!eyeMesh || !eyeMesh.morphTargetInfluences?.length) {
+    console.warn("MorphBlink: no suitable mesh found");
+    return;
+  }
+  const mesh = eyeMesh;
+  const dict = mesh.morphTargetDictionary || {};
+  const blinkIdx = dict["Key 2"] ?? dict["eyeL_60"] ?? dict["eyeL_100"] ?? 0;
+  type Ph = "idle" | "closing" | "opening";
+  let phase: Ph = "idle", phaseStart = performance.now(), idleDur = 3500 + Math.random() * 1500;
+  function tick2() {
+    const now = performance.now(), el = now - phaseStart;
+    if (phase === "idle") {
+      mesh.morphTargetInfluences![blinkIdx] = 0;
+      if (el >= idleDur) { phase = "closing"; phaseStart = now; }
+    } else if (phase === "closing") {
+      const t = Math.min(el / 80, 1);
+      mesh.morphTargetInfluences![blinkIdx] = t;
+      if (t >= 1) { phase = "opening"; phaseStart = now; }
+    } else {
+      const t = Math.min(el / 80, 1);
+      mesh.morphTargetInfluences![blinkIdx] = 1 - t;
+      if (t >= 1) { phase = "idle"; phaseStart = now; idleDur = 2500 + Math.random() * 2000; }
+    }
+    requestAnimationFrame(tick2);
+  }
+  tick2();
 }
 
 const createBoneAction = (

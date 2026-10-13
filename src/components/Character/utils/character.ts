@@ -164,8 +164,8 @@ const setCharacter = (
               character.getObjectByName("spine006") ||
               character.getObjectByName("spine.006");
 
-            // Scale: 4.2 matches the body proportions well on standard screens
-            const headScale = 4.2;
+            // Scale: 4.6 gives a head size that matches body proportions
+            const headScale = 4.6;
 
             const headContainer = new THREE.Group();
             headContainer.name = "tripoHeadContainer";
@@ -185,8 +185,8 @@ const setCharacter = (
             // Rotate to face forward (-90deg Y)
             headScene.rotation.y = -Math.PI / 2;
 
-            // Y = -0.10 raises the neck so it peeks above the shirt collar
-            headContainer.position.set(0, -0.10, 0);
+            // Y=0.12 raises neck higher, Z=-0.18 pushes head forward toward camera
+            headContainer.position.set(0, 0.12, -0.18);
 
             if (headBone) {
               headBone.add(headContainer);
