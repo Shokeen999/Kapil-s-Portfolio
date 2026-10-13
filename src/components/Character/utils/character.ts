@@ -164,7 +164,6 @@ const setCharacter = (
               character.getObjectByName("spine006") ||
               character.getObjectByName("spine.006");
 
-            // Scale: 4.6 gives a head size that matches body proportions
             const headScale = 4.6;
 
             const headContainer = new THREE.Group();
@@ -182,20 +181,47 @@ const setCharacter = (
             headContainer.add(headScene);
             headContainer.scale.setScalar(headScale);
 
-            // Rotate to face forward (-90deg Y)
+            // Face forward (rotate -90deg Y)
             headScene.rotation.y = -Math.PI / 2;
 
-            // Y=0.12 raises neck higher, Z=-0.18 pushes head forward toward camera
-            headContainer.position.set(0, 0.12, -0.18);
+            // Sink neck into shirt collar; no Z offset (causes floating gap)
+            headContainer.position.set(0, -0.05, 0);
+
+            // Neck fill cylinder — added directly to headBone (bone-space, no 4.6x scale)
+            // bridges the seam between Tripo neck stub and shirt collar
+            const neckMat = new THREE.MeshStandardMaterial({
+              color: new THREE.Color("#cb8e62"),
+              roughness: 0.58,
+              metalness: 0.02,
+            });
+            const neckGeo = new THREE.CylinderGeometry(0.32, 0.38, 0.8, 20);
+            const neckFill = new THREE.Mesh(neckGeo, neckMat);
+            neckFill.name = "neckFillCylinder";
+            neckFill.position.set(0, 0.3, 0);
+            neckFill.castShadow = true;
+            neckFill.receiveShadow = true;
 
             if (headBone) {
               headBone.add(headContainer);
-              console.log("Tripo head attached to spine.006");
+              headBone.add(neckFill);
+              console.log("Tripo head + neck fill attached to spine.006");
             } else {
               character.add(headContainer);
               headContainer.position.set(0, 12.0, 0);
               console.warn("spine.006 not found; attached to root");
             }
+
+            // Restore basePitch so mouse tracking targets forward-facing pose
+            (window as any).__basePitch = -0.26;
+
+            // After introAnimation finishes (~4.5s), reset head bone pitch to look forward
+            // introAnimation clampWhenFinished=true can lock the head in a downward pose
+            setTimeout(() => {
+              if (headBone) {
+                headBone.rotation.x = -0.26;
+              }
+            }, 4500);
+
           } catch (err) {
             console.error("Error positioning head:", err);
           }
@@ -209,6 +235,7 @@ const setCharacter = (
       );
     });
   };
+
 
   return { loadCharacter };
 };
