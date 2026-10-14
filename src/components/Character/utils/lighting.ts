@@ -36,12 +36,19 @@ const setLighting = (scene: THREE.Scene) => {
   pointLight.castShadow = true;
   scene.add(pointLight);
 
+  // Hemisphere ambient fill light (sky/ground) to guarantee character is never under darkness
+  const hemiLight = new THREE.HemisphereLight(0xfff8f0, 0x222233, 1.25);
+  scene.add(hemiLight);
+
+  let lightsTurnedOn = false;
+
   new RGBELoader()
     .setPath("/models/")
     .load("char_enviorment.hdr", function (texture) {
       texture.mapping = THREE.EquirectangularReflectionMapping;
       scene.environment = texture;
-      scene.environmentIntensity = 0;
+      // If lights have already been triggered, immediately apply full intensity
+      scene.environmentIntensity = lightsTurnedOn ? 0.85 : 0.85;
       scene.environmentRotation.set(5.76, 85.85, 1);
     });
 
@@ -52,26 +59,32 @@ const setLighting = (scene: THREE.Scene) => {
       pointLight.intensity = 0;
     }
   }
-  const duration = 2;
+  const duration = 1.5;
   const ease = "power2.inOut";
   function turnOnLights() {
+    lightsTurnedOn = true;
     gsap.to(scene, {
-      environmentIntensity: 0.65,
+      environmentIntensity: 0.85,
       duration: duration,
       ease: ease,
     });
     gsap.to(directionalLight, {
-      intensity: 1.25,
+      intensity: 1.45,
+      duration: duration,
+      ease: ease,
+    });
+    gsap.to(hemiLight, {
+      intensity: 1.35,
       duration: duration,
       ease: ease,
     });
     gsap.to(rimLightLeft, {
-      intensity: 0.90,
+      intensity: 1.10,
       duration: duration,
       ease: ease,
     });
     gsap.to(rimLightRight, {
-      intensity: 0.80,
+      intensity: 1.00,
       duration: duration,
       ease: ease,
     });
